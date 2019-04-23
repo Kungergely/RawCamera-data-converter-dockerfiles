@@ -1,0 +1,47 @@
+FROM ubuntu:xenial
+
+RUN \
+	apt-get update && \
+	apt-get -y dist-upgrade && \
+	apt-get install -y wget make bzip2 gcc g++ texinfo m4 zip cmake automake git libtool libudev-dev pkg-config\
+	mingw-w64
+
+RUN \
+	chmod 777 /usr/local/include	
+
+ENV BUILD_HOME /root/converter
+ENV CC x86_64-w64-mingw32-gcc
+ENV CXX x86_64-w64-mingw32-g++
+
+RUN \
+	mkdir -p $BUILD_HOME/src && \
+	mkdir -p $BUILD_HOME/build && \
+	mkdir -p $BUILD_HOME/bin 
+
+RUN \
+	cd $BUILD_HOME/src && \
+	git clone https://github.com/madler/zlib.git && \
+	cd $BUILD_HOME/src/zlib && \
+	sed -i "s/PREFIX =/PREFIX = x86_64-w64-mingw32-/g" win32/Makefile.gcc && \
+	make -j2 -fwin32/Makefile.gcc && \
+	DESTDIR=${BUILD_HOME}/build/ INCLUDE_PATH=include LIBRARY_PATH=lib BINARY_PATH=bin make install -fwin32/Makefile.gcc
+
+RUN \
+        cd $BUILD_HOME/src && \
+        git clone https://github.com/LuaDist/libpng.git && \
+        cd $BUILD_HOME/src/libpng && \
+	CPPFLAGS="-I${BUILD_HOME}/build/include" LDFLAGS="-L${BUILD_HOME}/build/lib" ./configure --prefix="${BUILD_HOME}/build" --bindir="${BUILD_HOME}/build/bin" --enable-shared --enable-static --host=x86_64-w64-mingw32 && \
+        make -j2 && \
+        make install 
+
+RUN \
+	cd $BUILD_HOME/build && \
+	git clone https://github.com/ComputerNerd/RawCamera-data-converter.git && \
+	cd $BUILD_HOME/build/RawCamera-data-converter && \
+	sed -i "s/gcc -o convert -O2 -s -lm -lpng -Wall -Wextra \$(objects)/x86_64-w64-mingw32-gcc -o convert.exe -O2 -s -lm  -Wall -Wextra \$(objects) \${BUILD_HOME}\/build\/lib\/libpng.a \${BUILD_HOME}\/build\/lib\/libz.a -lssp -lmsvcrt/g" makefile && \
+	sed -i "s/gcc -O2 -s -lm -lpng -Wall -Wextra -c/x86_64-w64-mingw32-gcc -O2 -s -lm -lpng -Wall -Wextra -I\${BUILD_HOME}\/build\/include -L\${BUILD_HOME}\/build\/lib -c/g" makefile && \
+	make
+
+
+RUN \
+	cd $BUILD_HOME/build

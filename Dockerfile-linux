@@ -1,0 +1,21 @@
+FROM ubuntu:16.04
+
+RUN apt-get update \
+    && apt-get -y --no-install-recommends install  build-essential curl g++ ca-certificates cmake git automake libtool libudev-dev pkg-config\
+    && apt-get clean \
+    && update-ca-certificates
+
+ENV BUILD_HOME /root/converter
+
+RUN \
+	apt -y install libpng-dev zlib1g-dev && \
+	mkdir $BUILD_HOME && \
+        cd $BUILD_HOME && \
+        git clone https://github.com/ComputerNerd/RawCamera-data-converter.git && \
+        cd $BUILD_HOME/RawCamera-data-converter && \
+	sed -i "s/\$(objects)/\$(objects) \/usr\/lib\/x86_64-linux-gnu\/libpng.a \/usr\/lib\/x86_64-linux-gnu\/libz.a/g" makefile && \
+        make
+
+CMD         ["--help"]
+#ENTRYPOINT  ["/usr/bin/ffmpeg"]
+ENTRYPOINT  ["/bin/bash"]
